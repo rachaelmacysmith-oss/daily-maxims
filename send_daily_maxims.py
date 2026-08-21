@@ -7,17 +7,22 @@ print("--- STARTING DAILY EMAIL PROCESS ---")
 
 # 1. Force Ohio Region via Botocore Config
 my_config = Config(
-    region_name = 'us-east-2',
-    signature_version = 'v4',
-    retries = {'max_attempts': 10, 'mode': 'standard'}
+    region_name='us-east-2',
+    signature_version='v4',
+    retries={'max_attempts': 10, 'mode': 'standard'}
 )
 
 aws_access_key = os.environ.get("AWS_ACCESS_KEY_ID", "").strip()
 aws_secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "").strip()
 sender_email = os.environ.get("SENDER_EMAIL", "").strip()
+supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+supabase_key = os.environ.get("SUPABASE_KEY", "").strip()
 
-print(f"Connecting to AWS SES explicitly on region: us-east-2")
+print("Connecting to AWS SES explicitly on region: us-east-2")
 print(f"Sender Email: {sender_email}")
+
+# Initialize Supabase and SES
+supabase = create_client(supabase_url, supabase_key)
 
 ses = boto3.client(
     'ses',
@@ -87,7 +92,7 @@ plain_text = f"Daily Maxim #{current_maxim['id']}:\n\n\"{current_maxim['text']}\
 # 5. Dispatch Emails
 for recipient in active_subscribers:
     try:
-        print(f"Attempting to send email from '{sender_email}' to '{recipient}' via AWS SES ({aws_region})...")
+        print(f"Attempting to send email from '{sender_email}' to '{recipient}' via AWS SES (us-east-2)...")
         response = ses.send_email(
             Source=sender_email,
             Destination={'ToAddresses': [recipient]},
