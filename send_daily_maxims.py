@@ -7,7 +7,7 @@ print("--- STARTING DAILY EMAIL PROCESS ---")
 # 1. Initialize Clients
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
-aws_region = os.environ.get("AWS_REGION", "us-east-1")
+aws_region = os.environ.get("AWS_REGION", "us-east-2")
 sender_email = os.environ.get("SENDER_EMAIL")
 
 print(f"AWS Region configured as: {aws_region}")
