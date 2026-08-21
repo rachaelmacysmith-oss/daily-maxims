@@ -1,25 +1,29 @@
 import os, json, datetime
 from supabase import create_client
 import boto3
+from botocore.config import Config
 
 print("--- STARTING DAILY EMAIL PROCESS ---")
 
-# 1. Initialize Clients
-supabase_url = os.environ.get("SUPABASE_URL")
-supabase_key = os.environ.get("SUPABASE_KEY")
-aws_region = os.environ.get("AWS_REGION", "us-east-2")
-sender_email = os.environ.get("SENDER_EMAIL")
+# 1. Force Ohio Region via Botocore Config
+my_config = Config(
+    region_name = 'us-east-2',
+    signature_version = 'v4',
+    retries = {'max_attempts': 10, 'mode': 'standard'}
+)
 
-print(f"AWS Region configured as: {aws_region}")
-print(f"Sender Email configured as: {sender_email}")
+aws_access_key = os.environ.get("AWS_ACCESS_KEY_ID", "").strip()
+aws_secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "").strip()
+sender_email = os.environ.get("SENDER_EMAIL", "").strip()
 
-supabase = create_client(supabase_url, supabase_key)
+print(f"Connecting to AWS SES explicitly on region: us-east-2")
+print(f"Sender Email: {sender_email}")
 
 ses = boto3.client(
     'ses',
-    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID").strip(),
-    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY").strip(),
-    region_name='us-east-2'
+    aws_access_key_id=aws_access_key,
+    aws_secret_access_key=aws_secret_key,
+    config=my_config
 )
 
 # 2. Load Sayings
