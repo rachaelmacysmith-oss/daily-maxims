@@ -120,14 +120,7 @@ for recipient in active_subscribers:
                     'Text': {'Data': plain_text},
                     'Html': {'Data': html_template}
                 }
-            },
-            # Adds the standard header for one-click unsubscribes in Apple Mail, Gmail, etc.
-            Headers=[
-                {
-                    'Name': 'List-Unsubscribe',
-                    'Value': f'<{unsubscribe_url}>'
-                }
-            ]
+            }
         )
         print(f"SUCCESS! AWS SES Message ID: {response['MessageId']}")
     except Exception as e:
