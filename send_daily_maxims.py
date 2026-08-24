@@ -1,9 +1,12 @@
-import os, json, datetime
+import os, json, datetime, urllib.parse
 from supabase import create_client
 import boto3
 from botocore.config import Config
 
 print("--- STARTING DAILY EMAIL PROCESS ---")
+
+# Live Supabase Edge Function URL for unsubscribes
+UNSUBSCRIBE_BASE_URL = "https://sgcekdbclvtpbavbpkuf.supabase.co/functions/v1/unsubscribe"
 
 # 1. Force Ohio Region via Botocore Config
 my_config = Config(
@@ -49,8 +52,14 @@ print(f"Filtered active subscribers: {active_subscribers}")
 if not active_subscribers:
     print("CRITICAL: No subscribers found with 'is_active' = True. Stopping email dispatch.")
 
-# 4. Email Templates
-html_template = f"""
+# 4. Dispatch Emails with Unique Unsubscribe Links
+for recipient in active_subscribers:
+    # Build unique unsubscribe link for this recipient
+    encoded_email = urllib.parse.quote(recipient)
+    unsubscribe_url = f"{UNSUBSCRIBE_BASE_URL}?email={encoded_email}"
+
+    # HTML Email Template
+    html_template = f"""
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -74,8 +83,12 @@ html_template = f"""
           </tr>
           <tr>
             <td style="padding: 25px 40px; background-color: #fafafa; border-top: 1px solid #f0f0f0; text-align: center;">
-              <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #666666; font-family: system-ui, sans-serif;">
+              <p style="margin: 0 0 15px 0; font-size: 13px; line-height: 1.6; color: #666666; font-family: system-ui, sans-serif;">
                 These maxims were selected from H.H. Dorje Chang Buddha III's writings and included in the book "H.H. Dorje Chang Buddha" in a chapter entitled "Philosophical Sayings about Worldly Matters".
+              </p>
+              <p style="margin: 0; font-size: 12px; font-family: system-ui, sans-serif; color: #999999;">
+                You are receiving this because you subscribed to daily maxims.<br/>
+                <a href="{unsubscribe_url}" style="color: #666666; text-decoration: underline;">Unsubscribe here</a>
               </p>
             </td>
           </tr>
@@ -87,10 +100,15 @@ html_template = f"""
 </html>
 """
 
-plain_text = f"Daily Maxim #{current_maxim['id']}:\n\n\"{current_maxim['text']}\"\n\nThese maxims were selected from H.H. Dorje Chang Buddha III's writings and included in the book \"H.H. Dorje Chang Buddha\" in a chapter entitled \"Philosophical Sayings about Worldly Matters\"."
+    # Plain Text Fallback Body
+    plain_text = (
+        f"Daily Maxim #{current_maxim['id']}:\n\n"
+        f"\"{current_maxim['text']}\"\n\n"
+        f"These maxims were selected from H.H. Dorje Chang Buddha III's writings and included in the book "
+        f"\"H.H. Dorje Chang Buddha\" in a chapter entitled \"Philosophical Sayings about Worldly Matters\".\n\n"
+        f"To unsubscribe, visit: {unsubscribe_url}"
+    )
 
-# 5. Dispatch Emails
-for recipient in active_subscribers:
     try:
         print(f"Attempting to send email from '{sender_email}' to '{recipient}' via AWS SES (us-east-2)...")
         response = ses.send_email(
@@ -102,7 +120,14 @@ for recipient in active_subscribers:
                     'Text': {'Data': plain_text},
                     'Html': {'Data': html_template}
                 }
-            }
+            },
+            # Adds the standard header for one-click unsubscribes in Apple Mail, Gmail, etc.
+            Headers=[
+                {
+                    'Name': 'List-Unsubscribe',
+                    'Value': f'<{unsubscribe_url}>'
+                }
+            ]
         )
         print(f"SUCCESS! AWS SES Message ID: {response['MessageId']}")
     except Exception as e:
