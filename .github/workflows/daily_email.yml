@@ -2,7 +2,7 @@ name: Send Daily Philosophical Maxims
 
 on:
   schedule:
-    - cron: '0 12 * * *'
+    - cron: '17 12 * * *'  # Runs at 12:17 UTC (8:17 AM EDT)
   workflow_dispatch:
 
 jobs:
